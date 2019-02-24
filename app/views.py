@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for, session
 from app import app
 import csv
 import os
@@ -15,6 +15,12 @@ def makeDict(lista):
 
 def makeReg(form):
     return '{},{},"{}",{},{},{},{}\n'.format(form['fecha'],form['hora'],form['descripcion'],form['monedaComprada'],form['cantidadComprada'],form['monedaPagada'],form['cantidadPagada'])
+
+def get_db():
+    if 'ficherotransacciones' not in g:
+        g.db = connect_to_database()
+
+    return g.db
 
 @app.route('/')
 def index():
@@ -50,13 +56,13 @@ def nuevacompra():
                 transacciones = open(ficherotransacciones, 'r')
                 csvreader = csv.reader(transacciones, delimiter=',', quotechar='"' )
                 for numreg, registro in enumerate(csvreader):
-                    if numreg == registroseleccionado:
+                    if numreg == registroseleccionado and request.values.get('btnselected')=='Editar':
                         camposdict = makeDict(registro)
                         camposdict['registroseleccionado'] = registroseleccionado
                         return render_template('modificacompra.html', registro=camposdict)
                 return 'Movimiento no encontrado'
-            else:
-                return redirect(url_for('index'))
+                       
+            
     else:
         datos = request.form
         transacciones = open(ficherotransacciones, "a+")
@@ -80,7 +86,6 @@ def modificacompra():
             3.5 - Grabar en fichero nuevo el resto de registros - check
             3.6 - Borrar fichero antiguo
             3.7 - renombrar fichero nuevo
-
         4. - Devolver una página que diga que todo OK
     '''
     transacciones = open(ficherotransacciones, 'r')
@@ -105,4 +110,24 @@ def modificacompra():
 
     return redirect(url_for('index'))
 
+def borrarcompra():
+    transacciones = open(ficherotransacciones, 'r')
+    newtransacciones = open(nuevoficherotransacciones, 'w+')
     
+    registroseleccionado = int(request.form['registroseleccionado'])
+
+    linea = transacciones.readline()
+    numreg = 0
+    while linea != "":
+        if numreg == registroseleccionado:
+            linea = makeReg(request.form)
+
+        newtransacciones.write(linea)
+        linea = transacciones.readline()
+        numreg += 1
+
+    transacciones.close()
+    newtransacciones.close()
+    os.remove(ficherotransacciones)
+    os.rename(nuevoficherotransacciones, ficherotransacciones)
+    return redirect(url_for('index'))
