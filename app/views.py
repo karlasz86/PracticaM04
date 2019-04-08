@@ -48,20 +48,17 @@ def nuevacompra():
         else:
             if request.values.get('ix') != None:
                 registroseleccionado = int(request.values.get('ix'))
-
-                if request.values.get('btnselected') == 'Borrar':
-                    borracompra(registroseleccionado)
-                    return redirect(url_for('index'))
-
                 transacciones = open(ficherotransacciones, 'r')
                 csvreader = csv.reader(transacciones, delimiter=',', quotechar='"' )
                 for numreg, registro in enumerate(csvreader):
-                    if numreg == registroseleccionado:
+                    if request.values.get('btnselected') == 'Borrar':
+                        borracompra(registroseleccionado)
+                        return redirect(url_for('index'))
+
+                    if numreg == registroseleccionado and request.values.get('btnselected') == 'Editar':
                         camposdict = makeDict(registro)
                         camposdict['registroseleccionado'] = registroseleccionado
                         return render_template('modificacompra.html', registro=camposdict)
-                    
-
                 return 'Movimiento no encontrado'
             else:
                 return redirect(url_for('index'))
@@ -88,7 +85,6 @@ def modificacompra():
             3.5 - Grabar en fichero nuevo el resto de registros - check
             3.6 - Borrar fichero antiguo
             3.7 - renombrar fichero nuevo
-
         4. - Devolver una página que diga que todo OK
     '''
     transacciones = open(ficherotransacciones, 'r')
@@ -113,15 +109,25 @@ def modificacompra():
 
     return redirect(url_for('index'))
 
+
 def borracompra(registroseleccionado):
+    
     transacciones = open(ficherotransacciones, 'r')
     newtransacciones = open(nuevoficherotransacciones, 'w+')
-   
-    for numreg, linea in enumerate(transacciones):
-        if numreg == resgistroseleccionado:
-            continue
-        newtransacciones.write(linea)
 
+    registroseleccionado = int(request.form['registroseleccionado'])
+
+    linea = transacciones.readline()
+    numreg = 0
+    while linea != "":
+        if numreg == registroseleccionado:
+            del linea
+        else:
+            linea = makeReg(request.form)
+        newtransacciones.write(linea)
+        linea = transacciones.readline()
+        numreg += 1
+    
     transacciones.close()
     newtransacciones.close()
     os.remove(ficherotransacciones)
